@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>2048 — Полночный лёд</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,500&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#0a0f1a;
+    --bg-2:#111c33;
+    --panel:#141d30;
+    --cell-empty:#1c2540;
+    --ink:#eef3fb;
+    --ink-dim:#8493ac;
+    --line:rgba(255,255,255,0.07);
+    --shadow:0 10px 26px -12px rgba(0,0,0,0.6);
+    --radius-lg:22px;
+    --radius-sm:12px;
+    --gap:10px;
+    --font-display:'Fraunces',Georgia,serif;
+    --font-body:'Manrope',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{ margin:0; padding:0; height:100%; overscroll-behavior:none; overflow-x:hidden; }
+  body{
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.35) 0, transparent 2px) 0 0/30px 30px,
+      radial-gradient(circle at 70% 60%, rgba(255,255,255,0.25) 0, transparent 1.6px) 0 0/40px 40px,
+      linear-gradient(160deg, var(--bg-1), var(--bg-2));
+    display:flex;
+    justify-content:center;
+  }
+  .app{
+    width:100%;
+    max-width:430px;
+    padding:22px 16px calc(28px + env(safe-area-inset-bottom));
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  header{ text-align:center; }
+  .eyebrow{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.2em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin:0 0 6px;
+  }
+  h1{
+    margin:0;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:48px;
+    letter-spacing:-0.01em;
+    background:linear-gradient(180deg,#eaf6ff,#8ec9f5 55%,#5b8fd9);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    line-height:1;
+  }
+  .tagline{
+    margin:9px 0 0;
+    font-family:var(--font-display);
+    font-style:italic;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink-dim);
+  }
+  .scorebar{ display:flex; gap:10px; }
+  .score-box{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    padding:10px 14px;
+    text-align:center;
+  }
+  .score-label{
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .score-value{
+    font-weight:800;
+    font-size:22px;
+    margin-top:2px;
+    color:#8ec9f5;
+    transition:transform 120ms ease;
+  }
+  .score-value.bump{ transform:scale(1.15); color:#c79bff; }
+
+  .playerbar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .chip{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+    min-width:0;
+  }
+  .chip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip .pencil{ color:var(--ink-dim); font-size:12px; flex-shrink:0; }
+  .trophy-btn{
+    flex-shrink:0;
+    display:flex; align-items:center; gap:6px;
+    background:linear-gradient(135deg,#dceeff,#8ec9f5);
+    color:#0a1830;
+    border:none;
+    border-radius:999px;
+    padding:9px 14px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+
+  .board-wrap{ position:relative; }
+  .board{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(4,1fr);
+    gap:var(--gap);
+    background:var(--panel);
+    padding:var(--gap);
+    border-radius:var(--radius-lg);
+    aspect-ratio:1/1;
+    touch-action:none;
+    border:1px solid var(--line);
+  }
+  .cell{
+    border-radius:var(--radius-sm);
+    background:var(--cell-empty);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--font-body);
+    font-weight:800;
+    color:var(--ink);
+    position:relative;
+    overflow:hidden;
+    user-select:none;
+  }
+  .cell.d1{ font-size:clamp(22px,8vw,34px); }
+  .cell.d2{ font-size:clamp(20px,7vw,30px); }
+  .cell.d3{ font-size:clamp(16px,5.6vw,24px); }
+  .cell.d4{ font-size:clamp(13px,4.6vw,19px); }
+
+  .cell[data-v="2"]   { background:#1d3a52; color:#a9dcf5; }
+  .cell[data-v="4"]   { background:#184a63; color:#baeaff; }
+  .cell[data-v="8"]   { background:#125a72; color:#c9f3ff; }
+  .cell[data-v="16"]  { background:#136f92; color:#e0f7ff; }
+  .cell[data-v="32"]  { background:#1c5fc4; color:#ffffff; }
+  .cell[data-v="64"]  { background:#2c53d6; color:#ffffff; }
+  .cell[data-v="128"] { background:#4a4de0; color:#ffffff; }
+  .cell[data-v="256"] { background:#6b3fd6; color:#ffffff; }
+  .cell[data-v="512"] { background:#8a35c9; color:#ffffff; }
+  .cell[data-v="1024"]{ background:#a52fb0; color:#ffffff; }
+  .cell[data-v="2048"], .cell[data-super="1"]{
+    background:linear-gradient(135deg,#eaf6ff 0%,#bcdcff 30%,#d8c2ff 60%,#ffd6ee 100%);
+    color:#241a3a;
+    box-shadow:0 0 8px 1px rgba(180,210,255,0.35);
+    animation:glow 1.8s ease-in-out infinite alternate;
+  }
+  @keyframes glow{
+    from{ box-shadow:0 0 8px 1px rgba(180,210,255,0.35); }
+    to{ box-shadow:0 0 22px 6px rgba(180,210,255,0.8); }
+  }
+  .cell[data-v="2048"]::after, .cell[data-super="1"]::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.9) 47%, rgba(255,255,255,0.9) 53%, transparent 70%);
+    background-size:250% 250%;
+    animation:shimmer 2.6s ease-in-out infinite;
+  }
+  @keyframes shimmer{
+    0%{ background-position:120% 0%; }
+    100%{ background-position:-20% 100%; }
+  }
+  .cell.spawn{ animation:pop 200ms ease-out; }
+  .cell.merge{ animation:pulse 180ms ease-out; }
+  @keyframes pop{
+    0%{ transform:scale(0.4); opacity:0; }
+    70%{ transform:scale(1.1); opacity:1; }
+    100%{ transform:scale(1); }
+  }
+  @keyframes pulse{
+    0%{ transform:scale(1); }
+    35%{ transform:scale(1.14); }
+    100%{ transform:scale(1); }
+  }
+
+  .overlay{
+    position:absolute; inset:0;
+    background:rgba(10,15,26,0.92);
+    border-radius:var(--radius-lg);
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    text-align:center;
+    padding:20px;
+  }
+  .overlay.show{ display:flex; }
+  .overlay-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:28px;
+    background:linear-gradient(180deg,#eaf6ff,#8ec9f5);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .overlay p{ color:var(--ink-dim); margin:0; font-size:13px; max-width:240px; }
+  .overlay .status{ font-size:12px; color:#8ec9f5; min-height:16px; }
+
+  .controls{ display:flex; gap:10px; }
+  button{
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:14px;
+    border:none;
+    border-radius:var(--radius-sm);
+    padding:13px 16px;
+    cursor:pointer;
+    color:var(--ink);
+    background:var(--panel);
+    border:1px solid var(--line);
+  }
+  button:active{ transform:scale(0.97); }
+  .btn-primary{
+    flex:1;
+    background:linear-gradient(135deg,#dceeff,#8ec9f5);
+    color:#0a1830;
+    border:none;
+  }
+  .btn-ghost{ flex:1; }
+
+  .howto{
+    font-size:12px;
+    color:var(--ink-dim);
+    text-align:center;
+    line-height:1.5;
+  }
+  .howto b{ color:var(--ink); }
+
+  /* Modals */
+  .modal-backdrop{
+    position:fixed; inset:0;
+    background:rgba(6,10,18,0.72);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .modal-backdrop.show{ display:flex; }
+  .modal-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:22px;
+    width:100%;
+    max-width:360px;
+    max-height:80vh;
+    overflow-y:auto;
+    box-shadow:var(--shadow);
+  }
+  .modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .modal-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:20px;
+    color:var(--ink);
+  }
+  .modal-close{
+    background:transparent; border:none; color:var(--ink-dim);
+    font-size:20px; line-height:1; padding:4px 8px; cursor:pointer;
+  }
+  .nick-input{
+    width:100%;
+    background:var(--cell-empty);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:15px;
+    padding:12px 14px;
+    margin-bottom:14px;
+  }
+  .nick-input:focus{ outline:none; border-color:#8ec9f5; }
+  .lb-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
+  .lb-row{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 10px;
+    border-radius:10px;
+    background:var(--cell-empty);
+  }
+  .lb-row.me{ outline:1px solid #8ec9f5; background:#1d3a52; }
+  .lb-rank{ font-weight:800; color:var(--ink-dim); width:22px; text-align:center; font-size:13px; }
+  .lb-rank.top{ color:#f4c04a; }
+  .lb-name{ flex:1; font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-score{ font-weight:800; font-size:14px; color:#8ec9f5; }
+  .lb-empty, .lb-state{ text-align:center; color:var(--ink-dim); font-size:13px; padding:20px 8px; line-height:1.6; }
+  .lb-refresh{ width:100%; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <p class="eyebrow">Заморозка чисел</p>
+    <h1>2048</h1>
+    <p class="tagline">Свайпай, чтобы намораживать лёд</p>
+  </header>
+
+  <div class="scorebar">
+    <div class="score-box">
+      <div class="score-label">Счёт</div>
+      <div class="score-value" id="score">0</div>
+    </div>
+    <div class="score-box">
+      <div class="score-label">Рекорд</div>
+      <div class="score-value" id="best">0</div>
+    </div>
+  </div>
+
+  <div class="playerbar">
+    <div class="chip" id="chipBtn">
+      <span id="chipName">Игрок</span>
+      <span class="pencil">✏️</span>
+    </div>
+    <button class="trophy-btn" id="lbOpenBtn">🏆 Рейтинг</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+    <div class="overlay" id="overlay">
+      <div class="overlay-title" id="overlayTitle">Лёд треснул</div>
+      <p id="overlayText">Свободных ходов больше нет.</p>
+      <div class="status" id="overlayStatus"></div>
+      <button class="btn-primary" id="overlayRestart">Начать заново</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-ghost" id="restartBtn">❄ Новая игра</button>
+  </div>
+
+  <p class="howto"><b>Как играть:</b> свайпай по полю (или стрелки на клавиатуре). Плитки с одинаковыми числами сливаются в сумму. Заморозь идеальный кристалл — 2048!</p>
+</div>
+
+<!-- Nickname modal -->
+<div class="modal-backdrop" id="nickModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Как тебя записать?</div>
+      <button class="modal-close" id="nickClose">×</button>
+    </div>
+    <input class="nick-input" id="nickInput" maxlength="16" placeholder="Ник для рейтинга">
+    <button class="btn-primary" id="nickSave" style="width:100%">Сохранить</button>
+  </div>
+</div>
+
+<!-- Leaderboard modal -->
+<div class="modal-backdrop" id="lbModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">🏆 Таблица лидеров</div>
+      <button class="modal-close" id="lbClose">×</button>
+    </div>
+    <div id="lbBody">
+      <div class="lb-state">Загрузка…</div>
+    </div>
+    <button class="btn-ghost lb-refresh" id="lbRefresh">Обновить</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ====== НАСТРОЙКА ОБЛАЧНОГО РЕЙТИНГА ======
+  // Вставь сюда URL своей Firebase Realtime Database (без /.json на конце).
+  // Console Firebase → Realtime Database → скопировать ссылку вида:
+  // https://ИМЯ-ПРОЕКТА-default-rtdb.firebaseio.com
+  const CONFIG = {
+    FIREBASE_URL: "https://YOUR-PROJECT-default-rtdb.firebaseio.com"
+  };
+  const LB_CONFIGURED = !CONFIG.FIREBASE_URL.includes('YOUR-PROJECT');
+  // ===========================================
+
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if (tg) {
+    try { tg.ready(); tg.expand(); } catch(e){}
+    try { tg.setHeaderColor('#0a0f1a'); } catch(e){}
+    try { tg.setBackgroundColor('#0a0f1a'); } catch(e){}
+  }
+  function haptic(type){
+    if (!tg || !tg.HapticFeedback) return;
+    try {
+      if (type === 'success' || type === 'error' || type === 'warning') tg.HapticFeedback.notificationOccurred(type);
+      else tg.HapticFeedback.impactOccurred(type || 'light');
+    } catch(e){}
+  }
+
+  // ---- Хранилище профиля (Telegram CloudStorage с запасным вариантом в памяти) ----
+  const memoryStore = {};
+  function cloudGet(key){
+    return new Promise((resolve) => {
+      if (tg && tg.CloudStorage) {
+        try { tg.CloudStorage.getItem(key, (err, val) => resolve(err ? null : (val || null))); return; }
+        catch(e){}
+      }
+      resolve(memoryStore[key] || null);
+    });
+  }
+  function cloudSet(key, val){
+    return new Promise((resolve) => {
+      if (tg && tg.CloudStorage) {
+        try { tg.CloudStorage.setItem(key, val, () => resolve()); return; }
+        catch(e){}
+      }
+      memoryStore[key] = val;
+      resolve();
+    });
+  }
+
+  function uuid(){
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'p' + Date.now() + Math.random().toString(36).slice(2,10);
+  }
+
+  let uid = null;
+  let nickname = '';
+
+  // ---- Рейтинг (Firebase REST) ----
+  async function fetchMyBest(){
+    if (!LB_CONFIGURED) return 0;
+    try {
+      const res = await fetch(`${CONFIG.FIREBASE_URL}/leaderboard/${uid}/score.json`);
+      const val = await res.json();
+      return typeof val === 'number' ? val : 0;
+    } catch(e){ return 0; }
+  }
+
+  let bestEverSubmitted = 0;
+  async function submitScore(finalScore){
+    if (!LB_CONFIGURED) return false;
+    if (finalScore <= bestEverSubmitted) return false;
+    try {
+      await fetch(`${CONFIG.FIREBASE_URL}/leaderboard/${uid}.json`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ nickname: nickname || 'Игрок', score: finalScore, ts: Date.now() })
+      });
+      bestEverSubmitted = finalScore;
+      return true;
+    } catch(e){ return false; }
+  }
+
+  async function loadLeaderboard(){
+    const body = document.getElementById('lbBody');
+    if (!LB_CONFIGURED) {
+      body.innerHTML = '<div class="lb-state">Рейтинг ещё не настроен.<br>Добавь свой Firebase URL в код игры (переменная FIREBASE_URL), чтобы включить общую таблицу лидеров.</div>';
+      return;
+    }
+    body.innerHTML = '<div class="lb-state">Загрузка…</div>';
+    try {
+      const res = await fetch(`${CONFIG.FIREBASE_URL}/leaderboard.json`);
+      const data = await res.json();
+      if (!data) { body.innerHTML = '<div class="lb-empty">Пока никто не заморозил ни одного числа. Будь первым!</div>'; return; }
+      const rows = Object.entries(data)
+        .map(([id, v]) => ({ id, nickname: (v && v.nickname) || 'Игрок', score: (v && v.score) || 0 }))
+        .sort((a,b) => b.score - a.score)
+        .slice(0, 30);
+      const list = document.createElement('div');
+      list.className = 'lb-list';
+      rows.forEach((r, i) => {
+        const row = document.createElement('div');
+        row.className = 'lb-row' + (r.id === uid ? ' me' : '');
+        row.innerHTML = `<span class="lb-rank${i<3?' top':''}">${i+1}</span><span class="lb-name">${escapeHtml(r.nickname)}</span><span class="lb-score">${r.score}</span>`;
+        list.appendChild(row);
+      });
+      body.innerHTML = '';
+      body.appendChild(list);
+    } catch(e){
+      body.innerHTML = '<div class="lb-state">Не удалось загрузить рейтинг. Проверь подключение и попробуй ещё раз.</div>';
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  // ---- Модалки ----
+  const nickModal = document.getElementById('nickModal');
+  const nickInput = document.getElementById('nickInput');
+  const lbModal = document.getElementById('lbModal');
+  const chipName = document.getElementById('chipName');
+
+  function openNickModal(prefill){
+    nickInput.value = prefill || nickname || '';
+    nickModal.classList.add('show');
+    setTimeout(() => nickInput.focus(), 50);
+  }
+  function closeNickModal(){ nickModal.classList.remove('show'); }
+
+  document.getElementById('chipBtn').onclick = () => openNickModal(nickname);
+  document.getElementById('nickClose').onclick = closeNickModal;
+  document.getElementById('nickSave').onclick = async () => {
+    const val = nickInput.value.trim().slice(0, 16);
+    nickname = val || 'Игрок';
+    chipName.textContent = nickname;
+    await cloudSet('nickname', nickname);
+    closeNickModal();
+    if (best > 0) submitScore(best);
+  };
+
+  document.getElementById('lbOpenBtn').onclick = () => { lbModal.classList.add('show'); loadLeaderboard(); };
+  document.getElementById('lbClose').onclick = () => lbModal.classList.remove('show');
+  document.getElementById('lbRefresh').onclick = loadLeaderboard;
+
+  // ================= Игра 2048 =================
+  const SIZE = 4;
+  let board = [];
+  let score = 0;
+  let best = 0;
+  let wonShown = false;
+  let locked = false;
+
+  const boardEl = document.getElementById('board');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlayEl = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const overlayStatus = document.getElementById('overlayStatus');
+
+  const cellEls = [];
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    boardEl.appendChild(c);
+    cellEls.push(c);
+  }
+
+  function emptyBoard(){ return Array.from({length: SIZE}, () => Array(SIZE).fill(0)); }
+
+  function randomEmptyCell(b){
+    const empties = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (b[r][c] === 0) empties.push([r,c]);
+    if (empties.length === 0) return null;
+    return empties[Math.floor(Math.random() * empties.length)];
+  }
+
+  function spawnTile(b){
+    const pos = randomEmptyCell(b);
+    if (!pos) return null;
+    b[pos[0]][pos[1]] = Math.random() < 0.9 ? 2 : 4;
+    return pos;
+  }
+
+  function startGame(){
+    board = emptyBoard();
+    score = 0;
+    wonShown = false;
+    locked = false;
+    overlayEl.classList.remove('show');
+    overlayStatus.textContent = '';
+    spawnTile(board);
+    spawnTile(board);
+    render({spawns:[], merges:[]});
+    updateScore(0);
+    if (tg && tg.MainButton) {
+      try {
+        tg.MainButton.setText('Новая игра');
+        tg.MainButton.show();
+        tg.MainButton.offClick(startGame);
+        tg.MainButton.onClick(startGame);
+      } catch(e){}
+    }
+  }
+
+  function updateScore(delta){
+    scoreEl.textContent = score;
+    if (delta > 0) { scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }
+    if (score > best) {
+      best = score;
+      bestEl.textContent = best;
+      submitScore(best);
+    }
+  }
+
+  function digitsClass(v){
+    const len = String(v).length;
+    if (len <= 1) return 'd1';
+    if (len === 2) return 'd2';
+    if (len === 3) return 'd3';
+    return 'd4';
+  }
+
+  function render(anim){
+    for (let r = 0; r < SIZE; r++){
+      for (let c = 0; c < SIZE; c++){
+        const idx = r * SIZE + c;
+        const el = cellEls[idx];
+        const v = board[r][c];
+        el.className = 'cell';
+        if (v > 0){
+          el.textContent = v;
+          el.dataset.v = v;
+          if (v > 2048) el.dataset.super = '1'; else delete el.dataset.super;
+          el.classList.add(digitsClass(v));
+        } else {
+          el.textContent = '';
+          delete el.dataset.v;
+          delete el.dataset.super;
+        }
+        if (anim.merges.some(p => p[0]===r && p[1]===c)) el.classList.add('merge');
+        else if (anim.spawns.some(p => p[0]===r && p[1]===c)) el.classList.add('spawn');
+      }
+    }
+  }
+
+  function cloneBoard(b){ return b.map(row => row.slice()); }
+  function boardsEqual(a,b){
+    for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) if (a[r][c]!==b[r][c]) return false;
+    return true;
+  }
+
+  function slideLine(line){
+    const vals = line.filter(v => v !== 0);
+    const mergedIdx = [];
+    let gained = 0;
+    for (let i = 0; i < vals.length - 1; i++){
+      if (vals[i] === vals[i+1]){
+        vals[i] *= 2;
+        gained += vals[i];
+        mergedIdx.push(i);
+        vals.splice(i+1, 1);
+        vals.push(0);
+      }
+    }
+    while (vals.length < SIZE) vals.push(0);
+    return { vals, mergedIdx, gained };
+  }
+
+  function move(direction){
+    if (locked) return;
+    const before = cloneBoard(board);
+    let gained = 0;
+    const merges = [];
+
+    function processLine(getIdx, setIdx){
+      const line = [];
+      for (let i = 0; i < SIZE; i++) line.push(board[getIdx(i)[0]][getIdx(i)[1]]);
+      const { vals, mergedIdx, gained: g } = slideLine(line);
+      gained += g;
+      for (let i = 0; i < SIZE; i++){
+        const [r,c] = setIdx(i);
+        board[r][c] = vals[i];
+        if (mergedIdx.includes(i)) merges.push([r,c]);
+      }
+    }
+
+    if (direction === 'left'){ for (let r = 0; r < SIZE; r++) processLine(i => [r,i], i => [r,i]); }
+    else if (direction === 'right'){ for (let r = 0; r < SIZE; r++) processLine(i => [r, SIZE-1-i], i => [r, SIZE-1-i]); }
+    else if (direction === 'up'){ for (let c = 0; c < SIZE; c++) processLine(i => [i,c], i => [i,c]); }
+    else if (direction === 'down'){ for (let c = 0; c < SIZE; c++) processLine(i => [SIZE-1-i,c], i => [SIZE-1-i,c]); }
+
+    if (boardsEqual(before, board)) return;
+
+    score += gained;
+    updateScore(gained);
+    haptic(gained > 0 ? 'medium' : 'light');
+
+    const spawnPos = spawnTile(board);
+    render({ spawns: spawnPos ? [spawnPos] : [], merges });
+
+    if (!wonShown && board.some(row => row.some(v => v >= 2048))){
+      wonShown = true;
+      locked = true;
+      haptic('success');
+      overlayTitle.textContent = 'Кристалл готов!';
+      overlayText.textContent = 'Ты вырастил идеальный лёд — 2048. Можно продолжить или начать заново.';
+      overlayEl.classList.add('show');
+      const btn = overlayEl.querySelector('.btn-primary');
+      btn.textContent = 'Продолжить';
+      btn.onclick = () => { overlayEl.classList.remove('show'); locked = false; };
+      return;
+    }
+
+    if (!canMove(board)){
+      locked = true;
+      haptic('error');
+      overlayTitle.textContent = 'Лёд треснул';
+      overlayText.textContent = 'Свободных ходов больше нет. Счёт: ' + score;
+      overlayStatus.textContent = LB_CONFIGURED ? 'Сохраняем рекорд в рейтинг…' : '';
+      overlayEl.classList.add('show');
+      submitScore(best).then(sent => {
+        if (LB_CONFIGURED) overlayStatus.textContent = sent ? 'Рекорд сохранён в рейтинге ✓' : '';
+      });
+      const btn = overlayEl.querySelector('.btn-primary');
+      btn.textContent = 'Начать заново';
+      btn.onclick = startGame;
+    }
+  }
+
+  function canMove(b){
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (b[r][c] === 0) return true;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++){
+      const v = b[r][c];
+      if (c < SIZE-1 && b[r][c+1] === v) return true;
+      if (r < SIZE-1 && b[r+1][c] === v) return true;
+    }
+    return false;
+  }
+
+  document.getElementById('overlayRestart').onclick = startGame;
+  document.getElementById('restartBtn').onclick = startGame;
+
+  document.addEventListener('keydown', (e) => {
+    const map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down', a:'left', d:'right', w:'up', s:'down' };
+    if (map[e.key]){ e.preventDefault(); move(map[e.key]); }
+  });
+
+  let touchStartX = 0, touchStartY = 0, touching = false;
+  boardEl.addEventListener('touchstart', (e) => {
+    touching = true;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive:true });
+  boardEl.addEventListener('touchmove', (e) => { if (touching) e.preventDefault(); }, { passive:false });
+  boardEl.addEventListener('touchend', (e) => {
+    if (!touching) return;
+    touching = false;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const absX = Math.abs(dx), absY = Math.abs(dy);
+    const threshold = 24;
+    if (Math.max(absX, absY) < threshold) return;
+    if (absX > absY) move(dx > 0 ? 'right' : 'left');
+    else move(dy > 0 ? 'down' : 'up');
+  });
+
+  // ---- Инициализация профиля, затем старт игры ----
+  async function init(){
+    uid = await cloudGet('uid');
+    if (!uid) { uid = uuid(); await cloudSet('uid', uid); }
+
+    nickname = await cloudGet('nickname') || '';
+    if (!nickname) {
+      const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+      nickname = tgUser ? ('@' in tgUser && tgUser.username ? tgUser.username : (tgUser.first_name || '')) : '';
+    }
+    chipName.textContent = nickname || 'Игрок';
+
+    bestEverSubmitted = await fetchMyBest();
+    best = bestEverSubmitted;
+    bestEl.textContent = best;
+
+    startGame();
+
+    if (!(await cloudGet('nickname'))) {
+      setTimeout(() => openNickModal(nickname), 400);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
