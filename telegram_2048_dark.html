@@ -1,415 +1,265 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>2048 — Полночный лёд</title>
+<title>2048</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,500&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg-1:#0a0f1a;
-    --bg-2:#111c33;
-    --panel:#141d30;
-    --cell-empty:#1c2540;
-    --ink:#eef3fb;
-    --ink-dim:#8493ac;
-    --line:rgba(255,255,255,0.07);
+  [data-theme="dark"]{
+    --bg-1:#150a1a; --bg-2:#2a1030; --panel:#1e1226; --cell-empty:#2a1a33;
+    --ink:#f7ecf5; --ink-dim:#a98aa8; --line:rgba(255,255,255,0.07);
     --shadow:0 10px 26px -12px rgba(0,0,0,0.6);
-    --radius-lg:22px;
-    --radius-sm:12px;
-    --gap:10px;
-    --font-display:'Fraunces',Georgia,serif;
-    --font-body:'Manrope',system-ui,sans-serif;
+    --accent:#e85a9e; --accent-2:#f5a623;
+    --btn-primary-grad:linear-gradient(135deg,#ffe3f5,#e85a9e); --btn-primary-ink:#2a0f30;
+    --glow:rgba(255,190,90,0.7); --blob-op:0.28;
+    --title-grad:linear-gradient(180deg,#ffe3f5,#e85a9e 55%,#8a2f9c);
+    --tile-2-bg:#3d2150; --tile-2-ink:#dcc4f7;
+    --tile-4-bg:#4f1f5e; --tile-4-ink:#e6cdfb;
+    --tile-8-bg:#631f68; --tile-8-ink:#f0d6ff;
+    --tile-16-bg:#7d2170; --tile-16-ink:#ffe0fb;
+    --tile-32-bg:#9c2570; --tile-32-ink:#ffffff;
+    --tile-64-bg:#bf2b6a; --tile-64-ink:#ffffff;
+    --tile-128-bg:#dc3a5f; --tile-128-ink:#ffffff;
+    --tile-256-bg:#e94f4f; --tile-256-ink:#ffffff;
+    --tile-512-bg:#f27a3a; --tile-512-ink:#ffffff;
+    --tile-1024-bg:#f5a623; --tile-1024-ink:#2a1400;
   }
+  [data-theme="light"]{
+    --bg-1:#fdf3f8; --bg-2:#f7e3ee; --panel:#ffffff; --cell-empty:#f5e6f0;
+    --ink:#3a1f38; --ink-dim:#8a6a86; --line:#ecd7e6;
+    --shadow:0 10px 24px -12px rgba(58,31,56,0.18);
+    --accent:#9c2f80; --accent-2:#e06f30;
+    --btn-primary-grad:linear-gradient(135deg,#f7d6ee,#f7b53a); --btn-primary-ink:#3a1030;
+    --glow:rgba(226,90,60,0.35); --blob-op:0.5;
+    --title-grad:linear-gradient(180deg,#9c2f80,#c23f6a 60%,#9c2f80);
+    --tile-2-bg:#fbeaf7; --tile-2-ink:#9c3d82;
+    --tile-4-bg:#f7d6ee; --tile-4-ink:#8c2f74;
+    --tile-8-bg:#f2bfe0; --tile-8-ink:#7a2568;
+    --tile-16-bg:#eda3cf; --tile-16-ink:#ffffff;
+    --tile-32-bg:#e587b8; --tile-32-ink:#ffffff;
+    --tile-64-bg:#e06f9c; --tile-64-ink:#ffffff;
+    --tile-128-bg:#dd5f7e; --tile-128-ink:#ffffff;
+    --tile-256-bg:#e46b52; --tile-256-ink:#ffffff;
+    --tile-512-bg:#f0913f; --tile-512-ink:#ffffff;
+    --tile-1024-bg:#f7b53a; --tile-1024-ink:#2a1400;
+  }
+  :root{ --radius-lg:22px; --radius-sm:12px; --gap:10px; --font-display:'Fraunces',Georgia,serif; --font-body:'Manrope',system-ui,sans-serif; }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{ margin:0; padding:0; height:100%; overscroll-behavior:none; overflow-x:hidden; }
   body{
-    font-family:var(--font-body);
-    color:var(--ink);
+    font-family:var(--font-body); color:var(--ink);
     background:
-      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.35) 0, transparent 2px) 0 0/30px 30px,
-      radial-gradient(circle at 70% 60%, rgba(255,255,255,0.25) 0, transparent 1.6px) 0 0/40px 40px,
+      radial-gradient(circle at 12% 0%, rgba(232,90,158,var(--blob-op)), transparent 45%),
+      radial-gradient(circle at 88% 100%, rgba(245,166,35,calc(var(--blob-op) * 0.7)), transparent 50%),
       linear-gradient(160deg, var(--bg-1), var(--bg-2));
-    display:flex;
-    justify-content:center;
+    display:flex; justify-content:center;
+    transition:background 200ms ease;
   }
-  .app{
-    width:100%;
-    max-width:430px;
-    padding:22px 16px calc(28px + env(safe-area-inset-bottom));
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-  }
+  .app{ width:100%; max-width:430px; padding:20px 16px calc(26px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px; }
   header{ text-align:center; }
-  .eyebrow{
-    font-size:11px;
-    font-weight:700;
-    letter-spacing:0.2em;
-    text-transform:uppercase;
-    color:var(--ink-dim);
-    margin:0 0 6px;
-  }
-  h1{
-    margin:0;
-    font-family:var(--font-display);
-    font-weight:700;
-    font-size:48px;
-    letter-spacing:-0.01em;
-    background:linear-gradient(180deg,#eaf6ff,#8ec9f5 55%,#5b8fd9);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    line-height:1;
-  }
-  .tagline{
-    margin:9px 0 0;
-    font-family:var(--font-display);
-    font-style:italic;
-    font-weight:500;
-    font-size:14px;
-    color:var(--ink-dim);
-  }
-  .scorebar{ display:flex; gap:10px; }
-  .score-box{
-    flex:1;
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:var(--radius-sm);
-    padding:10px 14px;
-    text-align:center;
-  }
-  .score-label{
-    font-size:10px;
-    font-weight:700;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--ink-dim);
-  }
-  .score-value{
-    font-weight:800;
-    font-size:22px;
-    margin-top:2px;
-    color:#8ec9f5;
-    transition:transform 120ms ease;
-  }
-  .score-value.bump{ transform:scale(1.15); color:#c79bff; }
+  .eyebrow{ font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--ink-dim); margin:0 0 6px; }
+  h1{ margin:0; font-family:var(--font-display); font-weight:700; font-size:44px; letter-spacing:-0.01em;
+    background:var(--title-grad); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1; }
+  .tagline{ margin:8px 0 0; font-family:var(--font-display); font-style:italic; font-weight:500; font-size:13px; color:var(--ink-dim); }
 
-  .playerbar{
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
-  .chip{
-    flex:1;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:999px;
-    padding:8px 14px;
-    font-size:13px;
-    font-weight:600;
-    color:var(--ink);
-    cursor:pointer;
-    min-width:0;
-  }
-  .chip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .chip .pencil{ color:var(--ink-dim); font-size:12px; flex-shrink:0; }
-  .trophy-btn{
-    flex-shrink:0;
-    display:flex; align-items:center; gap:6px;
-    background:linear-gradient(135deg,#dceeff,#8ec9f5);
-    color:#0a1830;
-    border:none;
-    border-radius:999px;
-    padding:9px 14px;
-    font-weight:700;
-    font-size:13px;
-    cursor:pointer;
-  }
+  .scorebar{ display:flex; gap:10px; }
+  .score-box{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 14px; text-align:center; }
+  .score-label{ font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); }
+  .score-value{ font-weight:800; font-size:21px; margin-top:2px; color:var(--accent); transition:transform 120ms ease; }
+  .score-value.bump{ transform:scale(1.15); color:var(--accent-2); }
+
+  .toolbar{ display:flex; align-items:center; justify-content:center; gap:10px; }
+  .icon-btn{ flex-shrink:0; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:17px; background:var(--panel); border:1px solid var(--line); color:var(--ink); padding:0; cursor:pointer; }
+  .icon-btn:active{ transform:scale(0.94); }
+
+  .modetabs{ display:flex; background:var(--cell-empty); border-radius:999px; padding:4px; gap:4px; }
+  .modetabs button{ flex:1; border:none; background:transparent; color:var(--ink-dim); font-weight:700; font-size:12.5px;
+    padding:9px 8px; border-radius:999px; cursor:pointer; font-family:var(--font-body); }
+  .modetabs button.active{ background:var(--panel); color:var(--ink); box-shadow:var(--shadow); }
 
   .board-wrap{ position:relative; }
-  .board{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    grid-template-rows:repeat(4,1fr);
-    gap:var(--gap);
-    background:var(--panel);
-    padding:var(--gap);
-    border-radius:var(--radius-lg);
-    aspect-ratio:1/1;
-    touch-action:none;
-    border:1px solid var(--line);
-  }
-  .cell{
-    border-radius:var(--radius-sm);
+  .board{ position:relative; display:grid; grid-template-columns:repeat(var(--size,4),1fr); grid-template-rows:repeat(var(--size,4),1fr);
+    gap:var(--gap); background:var(--panel); padding:var(--gap); border-radius:var(--radius-lg); aspect-ratio:1/1;
+    touch-action:none; border:1px solid var(--line); }
+  .cell{ border-radius:var(--radius-sm); background:var(--cell-empty); }
+
+  .tiles-layer{ position:absolute; inset:0; pointer-events:none; }
+  .tiles-layer.resizing .tile{ transition:none !important; }
+  .tile{
+    position:absolute; top:0; left:0;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:var(--radius-sm); font-weight:800; font-family:var(--font-body); color:var(--ink);
     background:var(--cell-empty);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:var(--font-body);
-    font-weight:800;
-    color:var(--ink);
-    position:relative;
-    overflow:hidden;
-    user-select:none;
+    transition:transform 130ms ease, opacity 130ms ease;
+    will-change:transform;
   }
-  .cell.d1{ font-size:clamp(22px,8vw,34px); }
-  .cell.d2{ font-size:clamp(20px,7vw,30px); }
-  .cell.d3{ font-size:clamp(16px,5.6vw,24px); }
-  .cell.d4{ font-size:clamp(13px,4.6vw,19px); }
-
-  .cell[data-v="2"]   { background:#1d3a52; color:#a9dcf5; }
-  .cell[data-v="4"]   { background:#184a63; color:#baeaff; }
-  .cell[data-v="8"]   { background:#125a72; color:#c9f3ff; }
-  .cell[data-v="16"]  { background:#136f92; color:#e0f7ff; }
-  .cell[data-v="32"]  { background:#1c5fc4; color:#ffffff; }
-  .cell[data-v="64"]  { background:#2c53d6; color:#ffffff; }
-  .cell[data-v="128"] { background:#4a4de0; color:#ffffff; }
-  .cell[data-v="256"] { background:#6b3fd6; color:#ffffff; }
-  .cell[data-v="512"] { background:#8a35c9; color:#ffffff; }
-  .cell[data-v="1024"]{ background:#a52fb0; color:#ffffff; }
-  .cell[data-v="2048"], .cell[data-super="1"]{
-    background:linear-gradient(135deg,#eaf6ff 0%,#bcdcff 30%,#d8c2ff 60%,#ffd6ee 100%);
-    color:#241a3a;
-    box-shadow:0 0 8px 1px rgba(180,210,255,0.35);
-    animation:glow 1.8s ease-in-out infinite alternate;
+  .tile[data-v="2"]{ background:var(--tile-2-bg); color:var(--tile-2-ink); }
+  .tile[data-v="4"]{ background:var(--tile-4-bg); color:var(--tile-4-ink); }
+  .tile[data-v="8"]{ background:var(--tile-8-bg); color:var(--tile-8-ink); }
+  .tile[data-v="16"]{ background:var(--tile-16-bg); color:var(--tile-16-ink); }
+  .tile[data-v="32"]{ background:var(--tile-32-bg); color:var(--tile-32-ink); }
+  .tile[data-v="64"]{ background:var(--tile-64-bg); color:var(--tile-64-ink); }
+  .tile[data-v="128"]{ background:var(--tile-128-bg); color:var(--tile-128-ink); }
+  .tile[data-v="256"]{ background:var(--tile-256-bg); color:var(--tile-256-ink); }
+  .tile[data-v="512"]{ background:var(--tile-512-bg); color:var(--tile-512-ink); }
+  .tile[data-v="1024"]{ background:var(--tile-1024-bg); color:var(--tile-1024-ink); }
+  .tile[data-v="2048"], .tile[data-super="1"]{
+    background:linear-gradient(135deg,#fff7e0 0%,#ffe19a 30%,#ffcf7a 60%,#ffb85e 100%);
+    color:#3a1f00; animation:glow 1.8s ease-in-out infinite alternate;
   }
-  @keyframes glow{
-    from{ box-shadow:0 0 8px 1px rgba(180,210,255,0.35); }
-    to{ box-shadow:0 0 22px 6px rgba(180,210,255,0.8); }
-  }
-  .cell[data-v="2048"]::after, .cell[data-super="1"]::after{
-    content:"";
-    position:absolute; inset:0;
+  @keyframes glow{ from{ box-shadow:0 0 8px 1px var(--glow); } to{ box-shadow:0 0 22px 6px var(--glow); } }
+  .tile[data-v="2048"]::after, .tile[data-super="1"]::after{
+    content:""; position:absolute; inset:0;
     background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.9) 47%, rgba(255,255,255,0.9) 53%, transparent 70%);
-    background-size:250% 250%;
-    animation:shimmer 2.6s ease-in-out infinite;
+    background-size:250% 250%; animation:shimmer 2.6s ease-in-out infinite;
   }
-  @keyframes shimmer{
-    0%{ background-position:120% 0%; }
-    100%{ background-position:-20% 100%; }
-  }
-  .cell.spawn{ animation:pop 200ms ease-out; }
-  .cell.merge{ animation:pulse 180ms ease-out; }
-  @keyframes pop{
-    0%{ transform:scale(0.4); opacity:0; }
-    70%{ transform:scale(1.1); opacity:1; }
-    100%{ transform:scale(1); }
-  }
-  @keyframes pulse{
-    0%{ transform:scale(1); }
-    35%{ transform:scale(1.14); }
-    100%{ transform:scale(1); }
-  }
+  @keyframes shimmer{ 0%{ background-position:120% 0%; } 100%{ background-position:-20% 100%; } }
+  .tile.fade{ opacity:0; }
+  .tile.spawn{ animation:pop 180ms ease-out; }
+  .tile.merge{ animation:pulse 170ms ease-out; }
+  @keyframes pop{ 0%{ transform:translate(var(--tx),var(--ty)) scale(0.3); opacity:0; } 70%{ transform:translate(var(--tx),var(--ty)) scale(1.1); opacity:1; } 100%{ transform:translate(var(--tx),var(--ty)) scale(1); } }
+  @keyframes pulse{ 0%{ transform:translate(var(--tx),var(--ty)) scale(1); } 40%{ transform:translate(var(--tx),var(--ty)) scale(1.16); } 100%{ transform:translate(var(--tx),var(--ty)) scale(1); } }
 
-  .overlay{
-    position:absolute; inset:0;
-    background:rgba(10,15,26,0.92);
-    border-radius:var(--radius-lg);
-    display:none;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    text-align:center;
-    padding:20px;
-  }
+  .overlay{ position:absolute; inset:0; background:var(--panel); opacity:0.98; border-radius:var(--radius-lg); display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; padding:20px; z-index:5; }
   .overlay.show{ display:flex; }
-  .overlay-title{
-    font-family:var(--font-display);
-    font-weight:700;
-    font-size:28px;
-    background:linear-gradient(180deg,#eaf6ff,#8ec9f5);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
+  .overlay-title{ font-family:var(--font-display); font-weight:700; font-size:26px; background:var(--title-grad);
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
   .overlay p{ color:var(--ink-dim); margin:0; font-size:13px; max-width:240px; }
-  .overlay .status{ font-size:12px; color:#8ec9f5; min-height:16px; }
+  .overlay-actions{ display:flex; gap:8px; width:100%; margin-top:4px; }
 
   .controls{ display:flex; gap:10px; }
-  button{
-    font-family:var(--font-body);
-    font-weight:700;
-    font-size:14px;
-    border:none;
-    border-radius:var(--radius-sm);
-    padding:13px 16px;
-    cursor:pointer;
-    color:var(--ink);
-    background:var(--panel);
-    border:1px solid var(--line);
-  }
+  button{ font-family:var(--font-body); font-weight:700; font-size:14px; border:none; border-radius:var(--radius-sm);
+    padding:13px 16px; cursor:pointer; color:var(--ink); background:var(--panel); border:1px solid var(--line); }
   button:active{ transform:scale(0.97); }
-  .btn-primary{
-    flex:1;
-    background:linear-gradient(135deg,#dceeff,#8ec9f5);
-    color:#0a1830;
-    border:none;
-  }
+  .btn-primary{ flex:1; background:var(--btn-primary-grad); color:var(--btn-primary-ink); border:none; }
   .btn-ghost{ flex:1; }
 
-  .howto{
-    font-size:12px;
-    color:var(--ink-dim);
-    text-align:center;
-    line-height:1.5;
-  }
+  .howto{ font-size:12px; color:var(--ink-dim); text-align:center; line-height:1.5; }
   .howto b{ color:var(--ink); }
 
-  /* Modals */
-  .modal-backdrop{
-    position:fixed; inset:0;
-    background:rgba(6,10,18,0.72);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:50;
-    padding:20px;
-  }
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(10,4,14,0.72); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
   .modal-backdrop.show{ display:flex; }
-  .modal-card{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:20px;
-    padding:22px;
-    width:100%;
-    max-width:360px;
-    max-height:80vh;
-    overflow-y:auto;
-    box-shadow:var(--shadow);
-  }
-  .modal-head{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom:14px;
-  }
-  .modal-title{
-    font-family:var(--font-display);
-    font-weight:700;
-    font-size:20px;
-    color:var(--ink);
-  }
-  .modal-close{
-    background:transparent; border:none; color:var(--ink-dim);
-    font-size:20px; line-height:1; padding:4px 8px; cursor:pointer;
-  }
-  .nick-input{
-    width:100%;
-    background:var(--cell-empty);
-    border:1px solid var(--line);
-    border-radius:var(--radius-sm);
-    color:var(--ink);
-    font-family:var(--font-body);
-    font-size:15px;
-    padding:12px 14px;
-    margin-bottom:14px;
-  }
-  .nick-input:focus{ outline:none; border-color:#8ec9f5; }
-  .lb-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
-  .lb-row{
-    display:flex; align-items:center; gap:10px;
-    padding:9px 10px;
-    border-radius:10px;
-    background:var(--cell-empty);
-  }
-  .lb-row.me{ outline:1px solid #8ec9f5; background:#1d3a52; }
-  .lb-rank{ font-weight:800; color:var(--ink-dim); width:22px; text-align:center; font-size:13px; }
-  .lb-rank.top{ color:#f4c04a; }
-  .lb-name{ flex:1; font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .lb-score{ font-weight:800; font-size:14px; color:#8ec9f5; }
-  .lb-empty, .lb-state{ text-align:center; color:var(--ink-dim); font-size:13px; padding:20px 8px; line-height:1.6; }
-  .lb-refresh{ width:100%; margin-top:8px; }
+  .modal-card{ background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:22px; width:100%;
+    max-width:360px; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow); }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .modal-title{ font-family:var(--font-display); font-weight:700; font-size:19px; color:var(--ink); }
+  .modal-close{ background:transparent; border:none; color:var(--ink-dim); font-size:20px; line-height:1; padding:4px 8px; cursor:pointer; }
+
+  .stats-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .stat{ text-align:center; background:var(--cell-empty); border-radius:12px; padding:14px 6px; }
+  .stat-value{ font-weight:800; font-size:22px; color:var(--accent); }
+  .stat-label{ font-size:11px; color:var(--ink-dim); margin-top:4px; line-height:1.3; }
+
+  .setting-block{ margin-bottom:16px; }
+  .setting-block:last-child{ margin-bottom:0; }
+  .setting-label{ font-size:12px; font-weight:700; color:var(--ink-dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; }
+  .segmented{ display:flex; background:var(--cell-empty); border-radius:999px; padding:4px; gap:4px; }
+  .segmented button{ flex:1; border:none; background:transparent; color:var(--ink-dim); font-weight:700; font-size:13px;
+    padding:9px 8px; border-radius:999px; cursor:pointer; font-family:var(--font-body); }
+  .segmented button.active{ background:var(--panel); color:var(--ink); box-shadow:var(--shadow); }
+  .segmented.disabled{ opacity:0.4; pointer-events:none; }
+  .setting-note{ font-size:11px; color:var(--ink-dim); margin-top:6px; line-height:1.4; }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <p class="eyebrow">Заморозка чисел</p>
+    <p class="eyebrow">Слияние чисел</p>
     <h1>2048</h1>
-    <p class="tagline">Свайпай, чтобы намораживать лёд</p>
+    <p class="tagline">Свайпай и объединяй числа</p>
   </header>
 
   <div class="scorebar">
-    <div class="score-box">
-      <div class="score-label">Счёт</div>
-      <div class="score-value" id="score">0</div>
-    </div>
-    <div class="score-box">
-      <div class="score-label">Рекорд</div>
-      <div class="score-value" id="best">0</div>
-    </div>
+    <div class="score-box"><div class="score-label">Счёт</div><div class="score-value" id="score">0</div></div>
+    <div class="score-box"><div class="score-label">Рекорд</div><div class="score-value" id="best">0</div></div>
   </div>
 
-  <div class="playerbar">
-    <div class="chip" id="chipBtn">
-      <span id="chipName">Игрок</span>
-      <span class="pencil">✏️</span>
-    </div>
-    <button class="trophy-btn" id="lbOpenBtn">🏆 Рейтинг</button>
+  <div class="toolbar">
+    <button class="icon-btn" id="soundToggleBtn" title="Звук">🔊</button>
+    <button class="icon-btn" id="statsOpenBtn" title="Статистика">📊</button>
+    <button class="icon-btn" id="settingsOpenBtn" title="Настройки">⚙</button>
+  </div>
+
+  <div class="modetabs">
+    <button class="active" data-mode="normal" id="tabNormal">Игра</button>
+    <button data-mode="daily" id="tabDaily">🗓 Челлендж дня</button>
   </div>
 
   <div class="board-wrap">
-    <div class="board" id="board"></div>
+    <div class="board" id="board">
+      <div class="tiles-layer" id="tilesLayer"></div>
+    </div>
     <div class="overlay" id="overlay">
-      <div class="overlay-title" id="overlayTitle">Лёд треснул</div>
+      <div class="overlay-title" id="overlayTitle">Ходов не осталось</div>
       <p id="overlayText">Свободных ходов больше нет.</p>
-      <div class="status" id="overlayStatus"></div>
-      <button class="btn-primary" id="overlayRestart">Начать заново</button>
+      <div class="overlay-actions">
+        <button class="btn-primary" id="overlayRestart">Начать заново</button>
+        <button class="btn-ghost" id="overlayShare">📤 Поделиться</button>
+      </div>
     </div>
   </div>
 
-  <div class="controls">
-    <button class="btn-ghost" id="restartBtn">❄ Новая игра</button>
-  </div>
+  <div class="controls"><button class="btn-ghost" id="restartBtn">✨ Новая игра</button></div>
 
-  <p class="howto"><b>Как играть:</b> свайпай по полю (или стрелки на клавиатуре). Плитки с одинаковыми числами сливаются в сумму. Заморозь идеальный кристалл — 2048!</p>
+  <p class="howto"><b>How to play?:</b> свайпай по полю (или стрелки на клавиатуре). Одинаковые числа сливаются в сумму.</p>
 </div>
 
-<!-- Nickname modal -->
-<div class="modal-backdrop" id="nickModal">
+<!-- Stats modal -->
+<div class="modal-backdrop" id="statsModal">
   <div class="modal-card">
-    <div class="modal-head">
-      <div class="modal-title">Как тебя записать?</div>
-      <button class="modal-close" id="nickClose">×</button>
+    <div class="modal-head"><div class="modal-title">📊 Статистика</div><button class="modal-close" id="statsClose">×</button></div>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value" id="statGames">0</div><div class="stat-label">Игр сыграно</div></div>
+      <div class="stat"><div class="stat-value" id="statWins">0</div><div class="stat-label">Побед</div></div>
+      <div class="stat"><div class="stat-value" id="statStreak">0</div><div class="stat-label">Текущая серия</div></div>
+      <div class="stat"><div class="stat-value" id="statBestStreak">0</div><div class="stat-label">Лучшая серия</div></div>
     </div>
-    <input class="nick-input" id="nickInput" maxlength="16" placeholder="Ник для рейтинга">
-    <button class="btn-primary" id="nickSave" style="width:100%">Сохранить</button>
   </div>
 </div>
 
-<!-- Leaderboard modal -->
-<div class="modal-backdrop" id="lbModal">
+<!-- Settings modal -->
+<div class="modal-backdrop" id="settingsModal">
   <div class="modal-card">
-    <div class="modal-head">
-      <div class="modal-title">🏆 Таблица лидеров</div>
-      <button class="modal-close" id="lbClose">×</button>
+    <div class="modal-head"><div class="modal-title">⚙ Настройки</div><button class="modal-close" id="settingsClose">×</button></div>
+    <div class="setting-block">
+      <div class="setting-label">Размер поля</div>
+      <div class="segmented" id="sizeSeg">
+        <button data-val="3">3×3</button>
+        <button data-val="4" class="active">4×4</button>
+        <button data-val="5">5×5</button>
+      </div>
+      <div class="setting-note" id="sizeNote"></div>
     </div>
-    <div id="lbBody">
-      <div class="lb-state">Загрузка…</div>
+    <div class="setting-block">
+      <div class="setting-label">Тема</div>
+      <div class="segmented" id="themeSeg">
+        <button data-val="dark" class="active">🌙 Тёмная</button>
+        <button data-val="light">☀️ Светлая</button>
+      </div>
     </div>
-    <button class="btn-ghost lb-refresh" id="lbRefresh">Обновить</button>
+    <div class="setting-block">
+      <div class="setting-label">Звук</div>
+      <div class="segmented" id="soundSeg">
+        <button data-val="on" class="active">🔊 Вкл</button>
+        <button data-val="off">🔇 Выкл</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
 (function(){
-  // ====== НАСТРОЙКА ОБЛАЧНОГО РЕЙТИНГА ======
-  // Вставь сюда URL своей Firebase Realtime Database (без /.json на конце).
-  // Console Firebase → Realtime Database → скопировать ссылку вида:
-  // https://ИМЯ-ПРОЕКТА-default-rtdb.firebaseio.com
-  const CONFIG = {
-    FIREBASE_URL: "https://YOUR-PROJECT-default-rtdb.firebaseio.com"
-  };
-  const LB_CONFIGURED = !CONFIG.FIREBASE_URL.includes('YOUR-PROJECT');
-  // ===========================================
+  const CONFIG = { BOT_LINK: "https://t.me/your_bot" };
+  const GAP = 10;
 
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-  if (tg) {
-    try { tg.ready(); tg.expand(); } catch(e){}
-    try { tg.setHeaderColor('#0a0f1a'); } catch(e){}
-    try { tg.setBackgroundColor('#0a0f1a'); } catch(e){}
-  }
+  if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
+
   function haptic(type){
     if (!tg || !tg.HapticFeedback) return;
     try {
@@ -418,317 +268,389 @@
     } catch(e){}
   }
 
-  // ---- Хранилище профиля (Telegram CloudStorage с запасным вариантом в памяти) ----
   const memoryStore = {};
   function cloudGet(key){
     return new Promise((resolve) => {
-      if (tg && tg.CloudStorage) {
-        try { tg.CloudStorage.getItem(key, (err, val) => resolve(err ? null : (val || null))); return; }
-        catch(e){}
-      }
+      if (tg && tg.CloudStorage) { try { tg.CloudStorage.getItem(key, (err, val) => resolve(err ? null : (val || null))); return; } catch(e){} }
       resolve(memoryStore[key] || null);
     });
   }
   function cloudSet(key, val){
     return new Promise((resolve) => {
-      if (tg && tg.CloudStorage) {
-        try { tg.CloudStorage.setItem(key, val, () => resolve()); return; }
-        catch(e){}
-      }
-      memoryStore[key] = val;
-      resolve();
+      if (tg && tg.CloudStorage) { try { tg.CloudStorage.setItem(key, val, () => resolve()); return; } catch(e){} }
+      memoryStore[key] = val; resolve();
     });
   }
 
-  function uuid(){
-    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    return 'p' + Date.now() + Math.random().toString(36).slice(2,10);
-  }
-
-  let uid = null;
-  let nickname = '';
-
-  // ---- Рейтинг (Firebase REST) ----
-  async function fetchMyBest(){
-    if (!LB_CONFIGURED) return 0;
-    try {
-      const res = await fetch(`${CONFIG.FIREBASE_URL}/leaderboard/${uid}/score.json`);
-      const val = await res.json();
-      return typeof val === 'number' ? val : 0;
-    } catch(e){ return 0; }
-  }
-
-  let bestEverSubmitted = 0;
-  async function submitScore(finalScore){
-    if (!LB_CONFIGURED) return false;
-    if (finalScore <= bestEverSubmitted) return false;
-    try {
-      await fetch(`${CONFIG.FIREBASE_URL}/leaderboard/${uid}.json`, {
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ nickname: nickname || 'Игрок', score: finalScore, ts: Date.now() })
-      });
-      bestEverSubmitted = finalScore;
-      return true;
-    } catch(e){ return false; }
-  }
-
-  async function loadLeaderboard(){
-    const body = document.getElementById('lbBody');
-    if (!LB_CONFIGURED) {
-      body.innerHTML = '<div class="lb-state">Рейтинг ещё не настроен.<br>Добавь свой Firebase URL в код игры (переменная FIREBASE_URL), чтобы включить общую таблицу лидеров.</div>';
-      return;
-    }
-    body.innerHTML = '<div class="lb-state">Загрузка…</div>';
-    try {
-      const res = await fetch(`${CONFIG.FIREBASE_URL}/leaderboard.json`);
-      const data = await res.json();
-      if (!data) { body.innerHTML = '<div class="lb-empty">Пока никто не заморозил ни одного числа. Будь первым!</div>'; return; }
-      const rows = Object.entries(data)
-        .map(([id, v]) => ({ id, nickname: (v && v.nickname) || 'Игрок', score: (v && v.score) || 0 }))
-        .sort((a,b) => b.score - a.score)
-        .slice(0, 30);
-      const list = document.createElement('div');
-      list.className = 'lb-list';
-      rows.forEach((r, i) => {
-        const row = document.createElement('div');
-        row.className = 'lb-row' + (r.id === uid ? ' me' : '');
-        row.innerHTML = `<span class="lb-rank${i<3?' top':''}">${i+1}</span><span class="lb-name">${escapeHtml(r.nickname)}</span><span class="lb-score">${r.score}</span>`;
-        list.appendChild(row);
-      });
-      body.innerHTML = '';
-      body.appendChild(list);
-    } catch(e){
-      body.innerHTML = '<div class="lb-state">Не удалось загрузить рейтинг. Проверь подключение и попробуй ещё раз.</div>';
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    document.querySelectorAll('#themeSeg button').forEach(b => b.classList.toggle('active', b.dataset.val === theme));
+    if (tg) {
+      try {
+        const bg1 = getComputedStyle(document.documentElement).getPropertyValue('--bg-1').trim();
+        tg.setHeaderColor(bg1); tg.setBackgroundColor(bg1);
+      } catch(e){}
     }
   }
+  document.getElementById('themeSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    applyTheme(btn.dataset.val); cloudSet('theme', btn.dataset.val);
+  });
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  let soundOn = true;
+  let audioCtx = null;
+  function ensureAudio(){ if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} } return audioCtx; }
+  function playTone(freq, duration, type, gainStart){
+    if (!soundOn) return;
+    const ctx = ensureAudio(); if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = type || 'sine'; osc.frequency.value = freq;
+      gain.gain.value = gainStart || 0.1;
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + duration);
+    } catch(e){}
+  }
+  function soundMove(){ playTone(300, 0.07, 'sine', 0.04); }
+  function soundMerge(value){ playTone(440 + Math.min(Math.log2(value) * 45, 520), 0.16, 'triangle', 0.12); }
+  function soundWin(){ [523,659,784,1047].forEach((f,i) => setTimeout(() => playTone(f, 0.25, 'triangle', 0.14), i*90)); }
+  function soundLose(){ [392,330,261].forEach((f,i) => setTimeout(() => playTone(f, 0.3, 'sine', 0.09), i*120)); }
+
+  function applySoundUI(){
+    document.querySelectorAll('#soundSeg button').forEach(b => b.classList.toggle('active', (b.dataset.val === 'on') === soundOn));
+    document.getElementById('soundToggleBtn').textContent = soundOn ? '🔊' : '🔇';
+  }
+  document.getElementById('soundSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    soundOn = btn.dataset.val === 'on'; applySoundUI(); cloudSet('sound', soundOn ? 'on' : 'off');
+  });
+  document.getElementById('soundToggleBtn').onclick = () => { soundOn = !soundOn; applySoundUI(); cloudSet('sound', soundOn ? 'on' : 'off'); };
+
+  function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function seedFromString(str){ let h = 0; for (let i=0;i<str.length;i++) h = (Math.imul(31,h) + str.charCodeAt(i)) | 0; return h; }
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
   }
 
-  // ---- Модалки ----
-  const nickModal = document.getElementById('nickModal');
-  const nickInput = document.getElementById('nickInput');
-  const lbModal = document.getElementById('lbModal');
-  const chipName = document.getElementById('chipName');
+  let currentMode = 'normal';
+  let rngFn = Math.random;
+  const WIN_TARGETS = { 3:256, 4:2048, 5:4096 };
 
-  function openNickModal(prefill){
-    nickInput.value = prefill || nickname || '';
-    nickModal.classList.add('show');
-    setTimeout(() => nickInput.focus(), 50);
+  function shareScore(finalScore){
+    const modeLabel = currentMode === 'daily' ? `Челлендж дня ${todayStr()}` : `поле ${SIZE}×${SIZE}`;
+    const text = `✨ Я набрал ${finalScore} очков в «2048: Слияние чисел» (${modeLabel})! Сможешь больше?`;
+    const url = CONFIG.BOT_LINK && !CONFIG.BOT_LINK.includes('your_bot') ? CONFIG.BOT_LINK : '';
+    const shareLink = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+    if (tg && tg.openTelegramLink) { try { tg.openTelegramLink(shareLink); return; } catch(e){} }
+    window.open(shareLink, '_blank');
   }
-  function closeNickModal(){ nickModal.classList.remove('show'); }
+  document.getElementById('overlayShare').onclick = () => shareScore(score);
 
-  document.getElementById('chipBtn').onclick = () => openNickModal(nickname);
-  document.getElementById('nickClose').onclick = closeNickModal;
-  document.getElementById('nickSave').onclick = async () => {
-    const val = nickInput.value.trim().slice(0, 16);
-    nickname = val || 'Игрок';
-    chipName.textContent = nickname;
-    await cloudSet('nickname', nickname);
-    closeNickModal();
-    if (best > 0) submitScore(best);
-  };
+  const statsModal = document.getElementById('statsModal');
+  let stats = { games:0, wins:0, streak:0, bestStreak:0 };
+  function updateStatsUI(){
+    document.getElementById('statGames').textContent = stats.games;
+    document.getElementById('statWins').textContent = stats.wins;
+    document.getElementById('statStreak').textContent = stats.streak;
+    document.getElementById('statBestStreak').textContent = stats.bestStreak;
+  }
+  async function recordGameEnd(didWin){
+    stats.games++;
+    if (didWin) { stats.wins++; stats.streak++; stats.bestStreak = Math.max(stats.bestStreak, stats.streak); }
+    else { stats.streak = 0; }
+    updateStatsUI();
+    await cloudSet('stats', JSON.stringify(stats));
+  }
+  document.getElementById('statsOpenBtn').onclick = () => { updateStatsUI(); statsModal.classList.add('show'); };
+  document.getElementById('statsClose').onclick = () => statsModal.classList.remove('show');
 
-  document.getElementById('lbOpenBtn').onclick = () => { lbModal.classList.add('show'); loadLeaderboard(); };
-  document.getElementById('lbClose').onclick = () => lbModal.classList.remove('show');
-  document.getElementById('lbRefresh').onclick = loadLeaderboard;
+  const settingsModal = document.getElementById('settingsModal');
+  document.getElementById('settingsOpenBtn').onclick = () => settingsModal.classList.add('show');
+  document.getElementById('settingsClose').onclick = () => settingsModal.classList.remove('show');
 
-  // ================= Игра 2048 =================
-  const SIZE = 4;
-  let board = [];
-  let score = 0;
-  let best = 0;
-  let wonShown = false;
-  let locked = false;
+  const sizeNote = document.getElementById('sizeNote');
+  function updateSizeNote(){
+    if (currentMode === 'daily') { sizeNote.textContent = `Сегодня: ${todayStr()}. У всех одинаковый старт и алгоритм появления чисел.`; return; }
+    sizeNote.textContent = `Цель — доехать до ${WIN_TARGETS[SIZE]}.`;
+  }
+
+  document.getElementById('sizeSeg').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button'); if (!btn || currentMode === 'daily') return;
+    const newSize = parseInt(btn.dataset.val, 10);
+    if (newSize === SIZE) return;
+    document.querySelectorAll('#sizeSeg button').forEach(b => b.classList.toggle('active', b === btn));
+    await applySize(newSize);
+    updateSizeNote();
+    startGame();
+  });
+
+  // ================= Движок 2048 (плавающие тайлы) =================
+  let SIZE = 4;
+  let score = 0, best = 0, wonShown = false, locked = false, cellPx = 80;
+  let tiles = [];          // [{id,value,row,col}]
+  let tilesById = {};      // id -> tile
+  let nextId = 1;
 
   const boardEl = document.getElementById('board');
+  const tilesLayer = document.getElementById('tilesLayer');
   const scoreEl = document.getElementById('score');
   const bestEl = document.getElementById('best');
   const overlayEl = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
-  const overlayStatus = document.getElementById('overlayStatus');
+  let slotEls = [];
 
-  const cellEls = [];
-  for (let i = 0; i < SIZE * SIZE; i++) {
-    const c = document.createElement('div');
-    c.className = 'cell';
-    boardEl.appendChild(c);
-    cellEls.push(c);
+  function buildBoardDom(){
+    Array.from(boardEl.querySelectorAll('.cell')).forEach(el => el.remove());
+    boardEl.style.setProperty('--size', SIZE);
+    slotEls = [];
+    for (let i = 0; i < SIZE * SIZE; i++) { const c = document.createElement('div'); c.className = 'cell'; boardEl.insertBefore(c, tilesLayer); slotEls.push(c); }
+    tilesLayer.innerHTML = '';
+    tiles = []; tilesById = {}; nextId = 1;
+    measureCell();
+  }
+  function measureCell(){
+    requestAnimationFrame(() => {
+      const contentWidth = boardEl.clientWidth - GAP * 2;
+      cellPx = Math.max(20, (contentWidth - GAP * (SIZE - 1)) / SIZE);
+    });
+  }
+  function repositionAll(){
+    tilesLayer.classList.add('resizing');
+    tiles.forEach(t => { const el = document.getElementById('tile-' + t.id); if (el) placeTile(el, t.row, t.col); });
+    requestAnimationFrame(() => tilesLayer.classList.remove('resizing'));
+  }
+  window.addEventListener('resize', () => { measureCell(); setTimeout(repositionAll, 60); });
+
+  async function applySize(newSize){
+    SIZE = newSize;
+    await cloudSet('size', String(newSize));
+    buildBoardDom();
+    best = await loadBestForSize(SIZE);
+    bestEl.textContent = best;
+  }
+  async function loadBestForSize(size){ return parseInt(await cloudGet(`best_${size}`) || '0', 10) || 0; }
+  async function saveBestForSize(size, value){ await cloudSet(`best_${size}`, String(value)); }
+  async function loadDailyBest(){ return parseInt(await cloudGet(`daily_best_${todayStr()}`) || '0', 10) || 0; }
+  async function saveDailyBest(value){ await cloudSet(`daily_best_${todayStr()}`, String(value)); }
+
+  function computeFontSize(v){
+    const len = String(v).length;
+    const scale = len <= 1 ? 0.42 : len === 2 ? 0.36 : len === 3 ? 0.30 : 0.24;
+    return Math.max(11, Math.round(cellPx * scale));
+  }
+  function placeTile(el, row, col){
+    const x = col * (cellPx + GAP), y = row * (cellPx + GAP);
+    el.style.width = cellPx + 'px'; el.style.height = cellPx + 'px';
+    el.style.setProperty('--tx', x + 'px'); el.style.setProperty('--ty', y + 'px');
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  }
+  function createTileEl(tile){
+    const el = document.createElement('div');
+    el.id = 'tile-' + tile.id;
+    el.className = 'tile spawn';
+    el.dataset.v = tile.value;
+    if (tile.value > 2048) el.dataset.super = '1';
+    el.textContent = tile.value;
+    el.style.fontSize = computeFontSize(tile.value) + 'px';
+    placeTile(el, tile.row, tile.col);
+    tilesLayer.appendChild(el);
+    setTimeout(() => el.classList.remove('spawn'), 220);
+    return el;
   }
 
-  function emptyBoard(){ return Array.from({length: SIZE}, () => Array(SIZE).fill(0)); }
-
-  function randomEmptyCell(b){
-    const empties = [];
-    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (b[r][c] === 0) empties.push([r,c]);
-    if (empties.length === 0) return null;
-    return empties[Math.floor(Math.random() * empties.length)];
+  function emptyCells(){
+    const occupied = new Set(tiles.map(t => t.row + ',' + t.col));
+    const cells = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!occupied.has(r + ',' + c)) cells.push([r, c]);
+    return cells;
   }
-
-  function spawnTile(b){
-    const pos = randomEmptyCell(b);
-    if (!pos) return null;
-    b[pos[0]][pos[1]] = Math.random() < 0.9 ? 2 : 4;
-    return pos;
+  function spawnTile(){
+    const cells = emptyCells(); if (!cells.length) return null;
+    const [r, c] = cells[Math.floor(rngFn() * cells.length)];
+    const tile = { id: 't' + (nextId++), value: rngFn() < 0.9 ? 2 : 4, row: r, col: c };
+    tiles.push(tile); tilesById[tile.id] = tile;
+    return tile;
   }
 
   function startGame(){
-    board = emptyBoard();
-    score = 0;
-    wonShown = false;
-    locked = false;
+    rngFn = currentMode === 'daily' ? mulberry32(seedFromString(todayStr())) : Math.random;
+    tilesLayer.innerHTML = ''; tiles = []; tilesById = {}; nextId = 1;
+    score = 0; wonShown = false; locked = false;
     overlayEl.classList.remove('show');
-    overlayStatus.textContent = '';
-    spawnTile(board);
-    spawnTile(board);
-    render({spawns:[], merges:[]});
-    updateScore(0);
+    measureCell();
+    setTimeout(() => {
+      const a = spawnTile(), b = spawnTile();
+      if (a) createTileEl(a);
+      if (b) createTileEl(b);
+    }, 0);
+    scoreEl.textContent = '0';
     if (tg && tg.MainButton) {
-      try {
-        tg.MainButton.setText('Новая игра');
-        tg.MainButton.show();
-        tg.MainButton.offClick(startGame);
-        tg.MainButton.onClick(startGame);
-      } catch(e){}
+      try { tg.MainButton.setText('Новая игра'); tg.MainButton.show(); tg.MainButton.offClick(startGame); tg.MainButton.onClick(startGame); } catch(e){}
     }
   }
 
-  function updateScore(delta){
+  async function switchMode(mode){
+    currentMode = mode;
+    document.getElementById('tabNormal').classList.toggle('active', mode === 'normal');
+    document.getElementById('tabDaily').classList.toggle('active', mode === 'daily');
+    document.getElementById('sizeSeg').classList.toggle('disabled', mode === 'daily');
+    if (mode === 'daily') {
+      if (SIZE !== 4) { await applySize(4); document.querySelectorAll('#sizeSeg button').forEach(b => b.classList.toggle('active', b.dataset.val === '4')); }
+      best = await loadDailyBest(); bestEl.textContent = best;
+    } else {
+      best = await loadBestForSize(SIZE); bestEl.textContent = best;
+    }
+    updateSizeNote();
+    startGame();
+  }
+  document.getElementById('tabNormal').onclick = () => switchMode('normal');
+  document.getElementById('tabDaily').onclick = () => switchMode('daily');
+
+  function bumpScore(delta){
     scoreEl.textContent = score;
     if (delta > 0) { scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }
     if (score > best) {
-      best = score;
-      bestEl.textContent = best;
-      submitScore(best);
+      best = score; bestEl.textContent = best;
+      if (currentMode === 'daily') saveDailyBest(best); else saveBestForSize(SIZE, best);
     }
   }
 
-  function digitsClass(v){
-    const len = String(v).length;
-    if (len <= 1) return 'd1';
-    if (len === 2) return 'd2';
-    if (len === 3) return 'd3';
-    return 'd4';
-  }
-
-  function render(anim){
-    for (let r = 0; r < SIZE; r++){
-      for (let c = 0; c < SIZE; c++){
-        const idx = r * SIZE + c;
-        const el = cellEls[idx];
-        const v = board[r][c];
-        el.className = 'cell';
-        if (v > 0){
-          el.textContent = v;
-          el.dataset.v = v;
-          if (v > 2048) el.dataset.super = '1'; else delete el.dataset.super;
-          el.classList.add(digitsClass(v));
-        } else {
-          el.textContent = '';
-          delete el.dataset.v;
-          delete el.dataset.super;
-        }
-        if (anim.merges.some(p => p[0]===r && p[1]===c)) el.classList.add('merge');
-        else if (anim.spawns.some(p => p[0]===r && p[1]===c)) el.classList.add('spawn');
-      }
+  function getLineTiles(grid, line, axis, reverse){
+    const items = [];
+    for (let k = 0; k < SIZE; k++){
+      const r = axis === 'row' ? line : k;
+      const c = axis === 'row' ? k : line;
+      if (grid[r][c]) items.push(grid[r][c]);
     }
-  }
-
-  function cloneBoard(b){ return b.map(row => row.slice()); }
-  function boardsEqual(a,b){
-    for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) if (a[r][c]!==b[r][c]) return false;
-    return true;
-  }
-
-  function slideLine(line){
-    const vals = line.filter(v => v !== 0);
-    const mergedIdx = [];
-    let gained = 0;
-    for (let i = 0; i < vals.length - 1; i++){
-      if (vals[i] === vals[i+1]){
-        vals[i] *= 2;
-        gained += vals[i];
-        mergedIdx.push(i);
-        vals.splice(i+1, 1);
-        vals.push(0);
-      }
-    }
-    while (vals.length < SIZE) vals.push(0);
-    return { vals, mergedIdx, gained };
+    if (reverse) items.reverse();
+    return items;
   }
 
   function move(direction){
     if (locked) return;
-    const before = cloneBoard(board);
-    let gained = 0;
-    const merges = [];
+    const axis = (direction === 'left' || direction === 'right') ? 'row' : 'col';
+    const reverse = (direction === 'right' || direction === 'down');
 
-    function processLine(getIdx, setIdx){
-      const line = [];
-      for (let i = 0; i < SIZE; i++) line.push(board[getIdx(i)[0]][getIdx(i)[1]]);
-      const { vals, mergedIdx, gained: g } = slideLine(line);
-      gained += g;
-      for (let i = 0; i < SIZE; i++){
-        const [r,c] = setIdx(i);
-        board[r][c] = vals[i];
-        if (mergedIdx.includes(i)) merges.push([r,c]);
+    const grid = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
+    tiles.forEach(t => { grid[t.row][t.col] = t.id; });
+
+    let anyChange = false, gained = 0, mergedValue = 0;
+    const removeIds = [];
+    const mergeIds = [];
+
+    for (let line = 0; line < SIZE; line++){
+      const idsInOrder = getLineTiles(grid, line, axis, reverse);
+      if (idsInOrder.length === 0) continue;
+      const result = [];
+      let i = 0;
+      while (i < idsInOrder.length){
+        const curId = idsInOrder[i];
+        const cur = tilesById[curId];
+        if (i + 1 < idsInOrder.length && tilesById[idsInOrder[i+1]].value === cur.value){
+          result.push({ id: curId, value: cur.value * 2, mergedFrom: idsInOrder[i+1] });
+          i += 2;
+        } else {
+          result.push({ id: curId, value: cur.value, mergedFrom: null });
+          i += 1;
+        }
       }
+      result.forEach((entry, idx) => {
+        let r, c;
+        if (axis === 'row'){ r = line; c = reverse ? (SIZE - 1 - idx) : idx; }
+        else { c = line; r = reverse ? (SIZE - 1 - idx) : idx; }
+        const tile = tilesById[entry.id];
+        if (tile.row !== r || tile.col !== c) anyChange = true;
+        if (entry.mergedFrom){
+          anyChange = true; gained += entry.value; mergedValue = Math.max(mergedValue, entry.value);
+          const absorbed = tilesById[entry.mergedFrom];
+          absorbed.row = r; absorbed.col = c;
+          removeIds.push(entry.mergedFrom);
+          mergeIds.push(entry.id);
+          tile.value = entry.value;
+        }
+        tile.row = r; tile.col = c;
+      });
     }
 
-    if (direction === 'left'){ for (let r = 0; r < SIZE; r++) processLine(i => [r,i], i => [r,i]); }
-    else if (direction === 'right'){ for (let r = 0; r < SIZE; r++) processLine(i => [r, SIZE-1-i], i => [r, SIZE-1-i]); }
-    else if (direction === 'up'){ for (let c = 0; c < SIZE; c++) processLine(i => [i,c], i => [i,c]); }
-    else if (direction === 'down'){ for (let c = 0; c < SIZE; c++) processLine(i => [SIZE-1-i,c], i => [SIZE-1-i,c]); }
-
-    if (boardsEqual(before, board)) return;
+    if (!anyChange) return;
+    locked = true;
 
     score += gained;
-    updateScore(gained);
+    bumpScore(gained);
     haptic(gained > 0 ? 'medium' : 'light');
+    if (gained > 0) soundMerge(mergedValue); else soundMove();
 
-    const spawnPos = spawnTile(board);
-    render({ spawns: spawnPos ? [spawnPos] : [], merges });
+    // Фаза 1: скольжение (значения обновятся после)
+    tiles.forEach(t => { const el = document.getElementById('tile-' + t.id); if (el) placeTile(el, t.row, t.col); });
+    removeIds.forEach(id => { const el = document.getElementById('tile-' + id); if (el) el.classList.add('fade'); });
 
-    if (!wonShown && board.some(row => row.some(v => v >= 2048))){
-      wonShown = true;
-      locked = true;
-      haptic('success');
-      overlayTitle.textContent = 'Кристалл готов!';
-      overlayText.textContent = 'Ты вырастил идеальный лёд — 2048. Можно продолжить или начать заново.';
+    setTimeout(() => {
+      removeIds.forEach(id => { const el = document.getElementById('tile-' + id); if (el) el.remove(); delete tilesById[id]; });
+      tiles = tiles.filter(t => !removeIds.includes(t.id));
+
+      mergeIds.forEach(id => {
+        const t = tilesById[id]; const el = document.getElementById('tile-' + id);
+        if (t && el){
+          el.textContent = t.value; el.dataset.v = t.value;
+          if (t.value > 2048) el.dataset.super = '1'; else delete el.dataset.super;
+          el.style.fontSize = computeFontSize(t.value) + 'px';
+          el.classList.remove('merge'); void el.offsetWidth; el.classList.add('merge');
+          setTimeout(() => el.classList.remove('merge'), 220);
+        }
+      });
+
+      const spawned = spawnTile();
+      if (spawned) createTileEl(spawned);
+
+      locked = false;
+      checkGameEnd();
+    }, 140);
+  }
+
+  function canMoveNow(){
+    if (emptyCells().length > 0) return true;
+    const vg = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+    tiles.forEach(t => vg[t.row][t.col] = t.value);
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++){
+      const v = vg[r][c];
+      if (c < SIZE-1 && vg[r][c+1] === v) return true;
+      if (r < SIZE-1 && vg[r+1][c] === v) return true;
+    }
+    return false;
+  }
+
+  function checkGameEnd(){
+    const target = currentMode === 'daily' ? 2048 : WIN_TARGETS[SIZE];
+    if (!wonShown && tiles.some(t => t.value >= target)){
+      wonShown = true; locked = true;
+      haptic('success'); soundWin();
+      overlayTitle.textContent = 'Слияние завершено!';
+      overlayText.textContent = `Ты дошёл до ${target}! Можно продолжить или начать заново.`;
       overlayEl.classList.add('show');
+      recordGameEnd(true);
       const btn = overlayEl.querySelector('.btn-primary');
       btn.textContent = 'Продолжить';
       btn.onclick = () => { overlayEl.classList.remove('show'); locked = false; };
       return;
     }
-
-    if (!canMove(board)){
+    if (!canMoveNow()){
       locked = true;
-      haptic('error');
-      overlayTitle.textContent = 'Лёд треснул';
+      haptic('error'); soundLose();
+      overlayTitle.textContent = 'Ходов не осталось';
       overlayText.textContent = 'Свободных ходов больше нет. Счёт: ' + score;
-      overlayStatus.textContent = LB_CONFIGURED ? 'Сохраняем рекорд в рейтинг…' : '';
       overlayEl.classList.add('show');
-      submitScore(best).then(sent => {
-        if (LB_CONFIGURED) overlayStatus.textContent = sent ? 'Рекорд сохранён в рейтинге ✓' : '';
-      });
+      if (!wonShown) recordGameEnd(false);
       const btn = overlayEl.querySelector('.btn-primary');
       btn.textContent = 'Начать заново';
       btn.onclick = startGame;
     }
-  }
-
-  function canMove(b){
-    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (b[r][c] === 0) return true;
-    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++){
-      const v = b[r][c];
-      if (c < SIZE-1 && b[r][c+1] === v) return true;
-      if (r < SIZE-1 && b[r+1][c] === v) return true;
-    }
-    return false;
   }
 
   document.getElementById('overlayRestart').onclick = startGame;
@@ -740,45 +662,39 @@
   });
 
   let touchStartX = 0, touchStartY = 0, touching = false;
-  boardEl.addEventListener('touchstart', (e) => {
-    touching = true;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive:true });
+  boardEl.addEventListener('touchstart', (e) => { touching = true; touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, { passive:true });
   boardEl.addEventListener('touchmove', (e) => { if (touching) e.preventDefault(); }, { passive:false });
   boardEl.addEventListener('touchend', (e) => {
-    if (!touching) return;
-    touching = false;
+    if (!touching) return; touching = false;
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     const absX = Math.abs(dx), absY = Math.abs(dy);
-    const threshold = 24;
-    if (Math.max(absX, absY) < threshold) return;
-    if (absX > absY) move(dx > 0 ? 'right' : 'left');
-    else move(dy > 0 ? 'down' : 'up');
+    if (Math.max(absX, absY) < 24) return;
+    if (absX > absY) move(dx > 0 ? 'right' : 'left'); else move(dy > 0 ? 'down' : 'up');
   });
 
-  // ---- Инициализация профиля, затем старт игры ----
   async function init(){
-    uid = await cloudGet('uid');
-    if (!uid) { uid = uuid(); await cloudSet('uid', uid); }
+    const savedTheme = await cloudGet('theme') || 'dark';
+    applyTheme(savedTheme);
 
-    nickname = await cloudGet('nickname') || '';
-    if (!nickname) {
-      const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-      nickname = tgUser ? ('@' in tgUser && tgUser.username ? tgUser.username : (tgUser.first_name || '')) : '';
-    }
-    chipName.textContent = nickname || 'Игрок';
+    const savedSound = await cloudGet('sound');
+    soundOn = savedSound !== 'off';
+    applySoundUI();
 
-    bestEverSubmitted = await fetchMyBest();
-    best = bestEverSubmitted;
+    const savedStats = await cloudGet('stats');
+    if (savedStats) { try { stats = Object.assign(stats, JSON.parse(savedStats)); } catch(e){} }
+    updateStatsUI();
+
+    const savedSize = parseInt(await cloudGet('size') || '4', 10);
+    SIZE = [3,4,5].includes(savedSize) ? savedSize : 4;
+    document.querySelectorAll('#sizeSeg button').forEach(b => b.classList.toggle('active', parseInt(b.dataset.val,10) === SIZE));
+    buildBoardDom();
+
+    best = await loadBestForSize(SIZE);
     bestEl.textContent = best;
+    updateSizeNote();
 
     startGame();
-
-    if (!(await cloudGet('nickname'))) {
-      setTimeout(() => openNickModal(nickname), 400);
-    }
   }
 
   init();
